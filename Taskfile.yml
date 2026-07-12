@@ -1,0 +1,134 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  APP_NAME: gfile
+  PORT: "8080"
+  UPLOAD_DIR: ./uploads
+
+tasks:
+
+  default:
+    desc: 显示可用任务列表
+    cmds:
+      - task --list
+    silent: true
+
+  # ── 构建 ──────────────────────────────────────────
+
+  build:
+    desc: 编译项目
+    cmds:
+      - go build -o {{.APP_NAME}} .
+    sources:
+      - "**/*.go"
+      - "**/*.templ"
+    generates:
+      - "{{.APP_NAME}}"
+
+  build-all:
+    desc: 编译模板并编译项目
+    cmds:
+      - task: gen
+      - task: build
+
+  # ── 运行 ──────────────────────────────────────────
+
+  run:
+    desc: 运行服务（默认端口 8080）
+    cmds:
+      - go run . --port {{.PORT}} --dir {{.UPLOAD_DIR}}
+    env:
+      PORT: "{{.PORT}}"
+
+  run-with-port:
+    desc: "指定端口运行（例: task run-with-port PORT=9090）"
+    cmds:
+      - go run . --port {{.PORT}} --dir {{.UPLOAD_DIR}}
+
+  dev:
+    desc: 编译模板后运行（开发模式）
+    cmds:
+      - task: gen
+      - task: run
+
+  # ── 测试 ──────────────────────────────────────────
+
+  test:
+    desc: 运行所有测试
+    cmds:
+      - go test -v ./...
+
+  test-short:
+    desc: 运行简短测试（无详细输出）
+    cmds:
+      - go test ./...
+
+  test-cover:
+    desc: 运行测试并输出覆盖率
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
+
+  test-cover-html:
+    desc: 运行测试并生成 HTML 覆盖率报告
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+    generates:
+      - coverage.html
+
+  # ── 模板 ──────────────────────────────────────────
+
+  gen:
+    desc: 编译 templ 模板
+    cmds:
+      - templ generate
+    sources:
+      - "**/*.templ"
+    generates:
+      - "**/*_templ.go"
+
+  watch:
+    desc: 监视文件变更并自动编译模板
+    cmds:
+      - templ generate --watch
+
+  # ── Swagger 文档 ──────────────────────────────────
+
+  swag:
+    desc: 生成 Swagger 文档
+    cmds:
+      - swag init --parseDependency --parseInternal
+    sources:
+      - "**/*.go"
+    generates:
+      - docs/
+
+  # ── 清理 ──────────────────────────────────────────
+
+  clean:
+    desc: 清理编译产物和测试缓存
+    cmds:
+      - task: clean-bin
+      - task: clean-cache
+
+  clean-bin:
+    desc: 删除编译产物
+    cmds:
+      - rm -f {{.APP_NAME}}
+      - rm -f {{.APP_NAME}}.exe
+    internal: true
+
+  clean-cache:
+    desc: 清理测试缓存
+    cmds:
+      - go clean -testcache
+    internal: true
+
+  clean-all:
+    desc: 清理所有（含覆盖率报告）
+    cmds:
+      - task: clean
+      - rm -f coverage.out coverage.html

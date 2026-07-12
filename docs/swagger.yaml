@@ -1,0 +1,135 @@
+basePath: /
+definitions:
+  response.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 轻量级文件上传与下载服务器，支持 zip/7z 自动解压
+  title: GFile API
+  version: 1.0.0
+paths:
+  /:
+    get:
+      description: 返回包含上传表单和文件列表的 HTML 页面
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: HTML 页面
+          schema:
+            type: string
+      summary: 首页
+      tags:
+      - 页面
+  /download/{filename}:
+    get:
+      description: 以附件形式下载指定文件
+      parameters:
+      - description: 文件名
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: 文件内容
+          schema:
+            type: file
+        "400":
+          description: 请求错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 文件不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 下载文件
+      tags:
+      - 文件操作
+  /files:
+    get:
+      description: 以 JSON 格式返回所有已上传文件的信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 文件列表
+          schema:
+            type: object
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 文件列表
+      tags:
+      - 文件操作
+  /upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传单个文件。支持普通文件以及 .zip / .7z 压缩包（自动解压）
+      parameters:
+      - description: 上传的文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 上传成功
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: 请求错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "409":
+          description: 文件已存在
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: 服务器错误
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 上传文件
+      tags:
+      - 文件操作
+  /view/{filename}:
+    get:
+      description: 在浏览器中内联展示文件内容（图片、文本等支持直接预览）
+      parameters:
+      - description: 文件名
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: 文件内容
+          schema:
+            type: file
+        "400":
+          description: 请求错误
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: 文件不存在
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: 预览文件
+      tags:
+      - 文件操作
+swagger: "2.0"
