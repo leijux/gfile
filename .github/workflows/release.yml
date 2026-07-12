@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Generate templ templates
+        run: |
+          go install github.com/a-h/templ/cmd/templ@latest
+          templ generate
+
+      - name: Generate Swagger docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@latest
+          swag init --parseDependency --parseInternal
+
+      - name: Build binaries
+        run: |
+          GOOS=linux   GOARCH=amd64 go build -o gfile-linux-amd64 .
+          GOOS=darwin  GOARCH=amd64 go build -o gfile-darwin-amd64 .
+          GOOS=windows GOARCH=amd64 go build -o gfile-windows-amd64.exe .
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            gfile-linux-amd64
+            gfile-darwin-amd64
+            gfile-windows-amd64.exe
