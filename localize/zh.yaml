@@ -1,0 +1,49 @@
+# Chinese (Simplified) translations for GFile
+pageTitle:
+  other: "GFile - 文件服务器"
+heading:
+  other: "GFile 文件服务器"
+uploadBtn:
+  other: "上传"
+fileListTitle:
+  other: "文件列表"
+fileName:
+  other: "文件名"
+size:
+  other: "大小"
+modTime:
+  other: "修改时间"
+actions:
+  other: "操作"
+noFiles:
+  other: "暂无文件"
+download:
+  other: "下载"
+uploadSuccess:
+  other: "上传成功"
+fileMissing:
+  other: "缺少文件或解析失败: {{ .Error }}"
+invalidFilename:
+  other: "无效的文件名"
+fileExists:
+  other: "文件已存在: {{ .Filename }}"
+saveFailed:
+  other: "保存文件失败: {{ .Error }}"
+filenameMissing:
+  other: "缺少文件名"
+invalidPath:
+  other: "非法的文件名"
+fileNotFound:
+  other: "文件不存在: {{ .Filename }}"
+listFailed:
+  other: "读取文件列表失败: {{ .Error }}"
+extractFailed:
+  other: "解压失败: {{ .Error }}"
+ok:
+  other: "ok"
+serverStarted:
+  other: "🚀 GFile 文件服务器启动于 {{ .URL }}"
+uploadDir:
+  other: "📁 上传目录: {{ .Path }}"
+swaggerDoc:
+  other: "📖 Swagger 文档: {{ .URL }}"

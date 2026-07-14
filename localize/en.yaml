@@ -1,0 +1,49 @@
+# English translations for GFile
+pageTitle:
+  other: "GFile - File Server"
+heading:
+  other: "GFile File Server"
+uploadBtn:
+  other: "Upload"
+fileListTitle:
+  other: "Files"
+fileName:
+  other: "Name"
+size:
+  other: "Size"
+modTime:
+  other: "Modified"
+actions:
+  other: "Actions"
+noFiles:
+  other: "No files yet"
+download:
+  other: "Download"
+uploadSuccess:
+  other: "Upload successful"
+fileMissing:
+  other: "Missing file or parse error: {{ .Error }}"
+invalidFilename:
+  other: "Invalid filename"
+fileExists:
+  other: "File already exists: {{ .Filename }}"
+saveFailed:
+  other: "Failed to save file: {{ .Error }}"
+filenameMissing:
+  other: "Missing filename"
+invalidPath:
+  other: "Illegal filename"
+fileNotFound:
+  other: "File not found: {{ .Filename }}"
+listFailed:
+  other: "Failed to read file list: {{ .Error }}"
+extractFailed:
+  other: "Extraction failed: {{ .Error }}"
+ok:
+  other: "ok"
+serverStarted:
+  other: "🚀 GFile server started at {{ .URL }}"
+uploadDir:
+  other: "📁 Upload directory: {{ .Path }}"
+swaggerDoc:
+  other: "📖 Swagger docs: {{ .URL }}"

@@ -10,7 +10,10 @@ import (
 	"strings"
 	"time"
 
+	contribi18n "github.com/gofiber/contrib/v3/i18n"
+
 	"gfile/internal/extractor"
+	"gfile/internal/i18n"
 	"gfile/internal/response"
 	"gfile/internal/views"
 
@@ -18,15 +21,70 @@ import (
 )
 
 // Handler 持有文件处理所需的依赖。
-// UploadDir 指定文件存放的根目录。
+// UploadDir 指定文件存放的根目录，Translator 用于多语言消息翻译。
 type Handler struct {
-	UploadDir string
+	UploadDir  string
+	Translator *contribi18n.I18n
 }
 
 // New 创建并返回一个新的 Handler 实例。
 // uploadDir 是文件上传后存放的目录路径。
-func New(uploadDir string) *Handler {
-	return &Handler{UploadDir: uploadDir}
+// translator 是 i18n 翻译器，用于多语言支持。
+func New(uploadDir string, translator *contribi18n.I18n) *Handler {
+	return &Handler{UploadDir: uploadDir, Translator: translator}
+}
+
+// t 是 i18n.T 的快捷方式，简化 handler 中的翻译调用。
+func (h *Handler) t(c fiber.Ctx, msgID string, data ...map[string]string) string {
+	return i18n.T(h.Translator, c, msgID, data...)
+}
+
+// buildTranslations 根据当前语言构建页面翻译数据。
+func (h *Handler) buildTranslations(c fiber.Ctx) views.Translations {
+	// 从请求中提取语言代码
+	lang := strings.ToLower(h.requestLang(c))
+
+	// 根据当前语言确定切换选项
+	var altLang, altLabel string
+	if strings.HasPrefix(lang, "en") {
+		altLang = "zh-CN"
+		altLabel = "中文"
+	} else {
+		altLang = "en-US"
+		altLabel = "English"
+	}
+
+	return views.Translations{
+		Title:         h.t(c, "pageTitle"),
+		Heading:       h.t(c, "heading"),
+		UploadBtn:     h.t(c, "uploadBtn"),
+		FileListTitle: h.t(c, "fileListTitle"),
+		FileName:      h.t(c, "fileName"),
+		Size:          h.t(c, "size"),
+		ModTime:       h.t(c, "modTime"),
+		Actions:       h.t(c, "actions"),
+		NoFiles:       h.t(c, "noFiles"),
+		Download:      h.t(c, "download"),
+		CurrentLang:   lang,
+		AltLang:       altLang,
+		AltLangLabel:  altLabel,
+	}
+}
+
+// requestLang 从请求中提取语言代码，优先级：query > header > 默认 "zh"。
+func (h *Handler) requestLang(c fiber.Ctx) string {
+	if c == nil {
+		return "zh"
+	}
+	if lang := c.Query("lang"); lang != "" {
+		return lang
+	}
+	if lang := c.Get("Accept-Language"); lang != "" {
+		// Accept-Language 可能为 "zh-CN,zh;q=0.9" 等格式，取第一个值
+		parts := strings.Split(lang, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	return "zh"
 }
 
 // Index 渲染首页 HTML 页面。
@@ -52,8 +110,9 @@ func (h *Handler) Index(c fiber.Ctx) error {
 		})
 	}
 
-	// 使用 templ 组件渲染页面并写入响应
-	return views.IndexPage(fileInfos).Render(c.Context(), c)
+	// 获取当前语言的翻译数据并渲染页面
+	tr := h.buildTranslations(c)
+	return views.IndexPage(fileInfos, tr).Render(c.Context(), c)
 }
 
 // Upload 处理 multipart/form-data 文件上传。
@@ -75,13 +134,13 @@ func (h *Handler) Upload(c fiber.Ctx) error {
 	// 从 multipart 表单中读取上传文件
 	file, err := c.FormFile("file")
 	if err != nil {
-		return response.BadRequest(c, "缺少文件或解析失败: "+err.Error())
+		return response.BadRequest(c, h.t(c, "fileMissing", map[string]string{"Error": err.Error()}))
 	}
 
 	// 净化文件名，防止路径穿越攻击
 	filename := filepath.Base(file.Filename)
 	if filename == "." || filename == "" {
-		return response.BadRequest(c, "无效的文件名")
+		return response.BadRequest(c, h.t(c, "invalidFilename"))
 	}
 
 	// 构造目标文件路径
@@ -89,12 +148,12 @@ func (h *Handler) Upload(c fiber.Ctx) error {
 
 	// 检查文件是否已存在，避免覆盖
 	if _, err := os.Stat(dst); err == nil {
-		return response.Conflict(c, "文件已存在: "+filename)
+		return response.Conflict(c, h.t(c, "fileExists", map[string]string{"Filename": filename}))
 	}
 
 	// 将上传的文件保存到磁盘
 	if err := c.SaveFile(file, dst); err != nil {
-		return response.InternalError(c, "保存文件失败: "+err.Error())
+		return response.InternalError(c, h.t(c, "saveFailed", map[string]string{"Error": err.Error()}))
 	}
 
 	// 构建响应数据
@@ -114,7 +173,7 @@ func (h *Handler) Upload(c fiber.Ctx) error {
 	}
 
 	// 返回统一格式的上传成功响应
-	return response.Created(c, data, "上传成功")
+	return response.Created(c, data, h.t(c, "uploadSuccess"))
 }
 
 // Download 根据文件名提供文件下载。
@@ -133,7 +192,7 @@ func (h *Handler) Upload(c fiber.Ctx) error {
 func (h *Handler) Download(c fiber.Ctx) error {
 	filename := c.Params("filename")
 	if filename == "" {
-		return response.BadRequest(c, "缺少文件名")
+		return response.BadRequest(c, h.t(c, "filenameMissing"))
 	}
 
 	// URL 解码，防止 %2e%2e 编码绕过路径穿越检查
@@ -145,7 +204,7 @@ func (h *Handler) Download(c fiber.Ctx) error {
 	if strings.Contains(filename, "..") ||
 		strings.Contains(filename, "/") ||
 		strings.Contains(filename, string(os.PathSeparator)) {
-		return response.BadRequest(c, "非法的文件名")
+		return response.BadRequest(c, h.t(c, "invalidPath"))
 	}
 
 	// 使用 filepath.Base 进一步确保安全性
@@ -154,7 +213,7 @@ func (h *Handler) Download(c fiber.Ctx) error {
 
 	// 检查文件是否存在
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return response.NotFound(c, "文件不存在: "+safeName)
+		return response.NotFound(c, h.t(c, "fileNotFound", map[string]string{"Filename": safeName}))
 	}
 
 	// 以附件形式提供下载
@@ -178,7 +237,7 @@ func (h *Handler) Download(c fiber.Ctx) error {
 func (h *Handler) View(c fiber.Ctx) error {
 	filename := c.Params("filename")
 	if filename == "" {
-		return response.BadRequest(c, "缺少文件名")
+		return response.BadRequest(c, h.t(c, "filenameMissing"))
 	}
 
 	// URL 解码，防止 %2e%2e 编码绕过路径穿越检查
@@ -190,7 +249,7 @@ func (h *Handler) View(c fiber.Ctx) error {
 	if strings.Contains(filename, "..") ||
 		strings.Contains(filename, "/") ||
 		strings.Contains(filename, string(os.PathSeparator)) {
-		return response.BadRequest(c, "非法的文件名")
+		return response.BadRequest(c, h.t(c, "invalidPath"))
 	}
 
 	// 使用 filepath.Base 进一步确保安全性
@@ -199,7 +258,7 @@ func (h *Handler) View(c fiber.Ctx) error {
 
 	// 检查文件是否存在
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return response.NotFound(c, "文件不存在: "+safeName)
+		return response.NotFound(c, h.t(c, "fileNotFound", map[string]string{"Filename": safeName}))
 	}
 
 	// 使用 SendFile 内联发送文件，浏览器会根据 Content-Type 自动预览
@@ -219,7 +278,7 @@ func (h *Handler) View(c fiber.Ctx) error {
 func (h *Handler) List(c fiber.Ctx) error {
 	files, err := h.listFiles()
 	if err != nil {
-		return response.InternalError(c, "读取文件列表失败: "+err.Error())
+		return response.InternalError(c, h.t(c, "listFailed", map[string]string{"Error": err.Error()}))
 	}
 
 	// 内部结构体，用于 JSON 序列化

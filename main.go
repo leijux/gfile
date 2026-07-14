@@ -1,5 +1,5 @@
 // GFile — 基于 Fiber v3 的轻量级文件上传与下载服务器。
-// 提供文件上传、下载、列表查看功能，支持中文界面。
+// 提供文件上传、下载、列表查看功能，支持中文/英文界面。
 //
 // @title			GFile API
 // @version			1.0.0
@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 
 	"gfile/internal/handler"
+	appi18n "gfile/internal/i18n"
 	"gfile/internal/response"
 
 	"github.com/gofiber/contrib/v3/swaggo"
@@ -44,28 +45,31 @@ func main() {
 		log.Fatalf("无法创建上传目录 %s: %v", absDir, err)
 	}
 
-	// 创建处理器实例，注入上传目录路径
-	h := handler.New(absDir)
+	// 初始化 i18n 翻译器（支持中文/英文，默认中文）
+	translator := appi18n.New("./localize")
+
+	// 创建处理器实例，注入上传目录路径和翻译器
+	h := handler.New(absDir, translator)
 
 	// 初始化 Fiber 应用
 	app := fiber.New(fiber.Config{
 		AppName:      "GFile",
-		BodyLimit:    100 * 1024 * 1024, // 请求体上限：100 MB
+		BodyLimit:    100 * 1024 * 1024,  // 请求体上限：100 MB
 		ErrorHandler: customErrorHandler, // 自定义错误处理
 	})
 
 	// 注册全局中间件
-	app.Use(recover.New())                   // 防止 panic 导致进程崩溃
-	app.Use(logger.New(logger.Config{        // 请求日志
+	app.Use(recover.New())            // 防止 panic 导致进程崩溃
+	app.Use(logger.New(logger.Config{ // 请求日志
 		Format: "[${ip}] ${method} ${path} ${status} ${latency}\n",
 	}))
 
 	// 注册路由
-	app.Get("/", h.Index)                          // 首页（HTML 上传页面）
-	app.Post("/upload", h.Upload)                  // 文件上传
-	app.Get("/view/:filename", h.View)             // 文件预览（内联静态文件）
-	app.Get("/download/:filename", h.Download)     // 文件下载
-	app.Get("/files", h.List)                      // 文件列表（JSON）
+	app.Get("/", h.Index)                      // 首页（HTML 上传页面）
+	app.Post("/upload", h.Upload)              // 文件上传
+	app.Get("/view/:filename", h.View)         // 文件预览（内联静态文件）
+	app.Get("/download/:filename", h.Download) // 文件下载
+	app.Get("/files", h.List)                  // 文件列表（JSON）
 
 	// Swagger 文档
 	app.Get("/swagger/*", swaggo.HandlerDefault)

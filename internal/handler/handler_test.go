@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	appi18n "gfile/internal/i18n"
+
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -25,7 +27,11 @@ func setupTest(t *testing.T) (*fiber.App, string) {
 	// 创建临时目录作为上传目录
 	tmpDir := t.TempDir()
 
-	h := New(tmpDir)
+	// 初始化 i18n 翻译器（从项目根目录加载 localize 目录）
+	localizePath := filepath.Join("..", "..", "localize")
+	translator := appi18n.New(localizePath)
+
+	h := New(tmpDir, translator)
 
 	app := fiber.New(fiber.Config{
 		AppName:   "GFile-Test",
@@ -659,7 +665,9 @@ func TestIndexLinksEncodedChinese(t *testing.T) {
 		t.Fatalf("写入文件失败: %v", err)
 	}
 
-	h := New(chineseDir)
+	localizePath := filepath.Join("..", "..", "localize")
+	translator := appi18n.New(localizePath)
+	h := New(chineseDir, translator)
 	app := fiber.New()
 	app.Get("/", h.Index)
 
